@@ -1,0 +1,295 @@
+<html>
+<head>
+<title>Dat's Map</title>
+<link rel="stylesheet" href="http://localhost:8080/geoserver/openlayers3/ol.css" type="text/css">
+<script src="http://localhost:8080/geoserver/openlayers3/ol.js" type="text/javascript"></script> 
+<!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.3.1/css/ol.css">
+<script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.3.1/build/ol.js"></script> -->
+<script src="https://code.jquery.com/jquery-1.12.3.min.js" type="text/javascript"></script>
+<style>
+  #map {
+  height: 100%;
+  width: 60%;
+  position: relative;
+  float: right;
+  }
+   
+  #map {
+  border: 1px solid #000;
+  }
+  table {
+    border-collapse: collapse;
+    text-align: center;
+  }
+  
+  table, th, td {
+    border: 1px solid black;
+    padding: 10px;
+  }
+  #scale {
+  margin-top: 24%;
+  margin-left: 93%;
+  position: absolute;
+  }
+
+  /* The switch - the box around the slider */
+*,
+*:before,
+*:after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, ".SFNSText-Regular", "Helvetica Neue", "Roboto", "Segoe UI", sans-serif;
+}
+
+.toggle {
+  cursor: pointer;
+  display: inline-block;
+}
+
+.toggle-switch {
+  display: inline-block;
+  background: #ccc;
+  border-radius: 16px;
+  width: 58px;
+  height: 32px;
+  position: relative;
+  vertical-align: middle;
+  transition: background 0.25s;
+}
+.toggle-switch:before, .toggle-switch:after {
+  content: "";
+}
+.toggle-switch:before {
+  display: block;
+  background: linear-gradient(to bottom, #fff 0%, #eee 100%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  transition: left 0.25s;
+}
+.toggle:hover .toggle-switch:before {
+  background: linear-gradient(to bottom, #fff 0%, #fff 100%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.toggle-checkbox:checked + .toggle-switch {
+  background: #c828dd;
+}
+.toggle-checkbox:checked + .toggle-switch:before {
+  left: 30px;
+}
+
+.toggle-checkbox {
+  position: absolute;
+  visibility: hidden;
+}
+
+.toggle-label {
+  margin-left: 5px;
+  position: relative;
+  top: 2px;
+}
+
+  </style>
+<script language="javascript">
+var format = 'image/png';
+//world with zoom = 3
+//var bounds = [208564.890625,1142180.375,787489.3125,1627999.75]; 
+// Viet Nam with zoom =5
+var bounds = [11071098.44281895,1904688.542848655,12523442.714243278,1957032.8142729844];
+// HN zoom 11
+//var bounds = [11005098.44281895,2811688.542848655,12523442.714243278,1967032.8142729844];
+//var bounds = [20.663853341108386,105.41238456659133,21.30648484370627,105.97243758462956];
+function init() {
+
+	var osm = new ol.layer.Tile({
+        source: new ol.source.OSM()
+      });
+	
+	var bing = new ol.layer.Tile({
+            source: new ol.source.BingMaps({
+				key: 'AkGbxXx6tDWf1swIhPJyoAVp06H0s0gDTYslNWWHZ6RoPqMpB9ld5FY1WutX8UoF',
+				imagerySet: 'Road',
+				units: 'm',
+				axisOrientation: 'neu'
+			})
+        });
+
+	  
+	var mousePositionControl = new ol.control.MousePosition({
+        className: 'custom-mouse-position',
+        target: document.getElementById('location'),
+        coordinateFormat: ol.coordinate.createStringXY(5),
+        undefinedHTML: '&nbsp;'
+      });
+	  
+	var province = new ol.layer.Image({
+        source: new ol.source.ImageWMS({
+          ratio: 1,
+          url: 'http://localhost:8080/geoserver/testmap/wms',
+          params: {'FORMAT': format,
+                   'VERSION': '1.1.1',  
+                STYLES: '',
+                LAYERS: 'CNSDD_latlong',
+          }
+        })
+      });
+	  
+	  
+	var hanoi = ol.proj.transform(
+					[21.026584, 105.837779], 
+					'EPSG:4326', 'EPSG:3857','EPSG:32648');
+	var map = new ol.Map({
+        controls: ol.control.defaults({
+          attribution: false
+        }).extend([mousePositionControl]),
+        target: 'map',
+        //layers: [bing,province],
+		layers: [osm,province],
+        view: new ol.View({
+			center: hanoi,
+			units: 'm',
+			axisOrientation: 'neu'
+        })
+      });
+	
+var styles = {
+ 'MultiPolygon': new ol.style.Style({
+ stroke: new ol.style.Stroke({
+ color: 'red',
+ width: 3
+ })
+ })
+ };
+  
+ var styleFunction = function (feature) {
+ return styles[feature.getGeometry().getType()];
+ };
+  
+ var vectorLayer = new ol.layer.Vector({
+ //source: vectorSource,
+ style: styleFunction
+ });
+ map.addLayer(vectorLayer);
+
+ map.getView().fit(bounds, map.getSize());
+$("#chkThuaDat").change(function () {
+if ($("#chkThuaDat").is(":checked")) {
+province.setVisible(true);
+}
+else {
+province.setVisible(false);
+}
+});
+map.on('singleclick', function (evt) {
+document.getElementById('info').innerHTML = "Loading... please wait...";
+var view = map.getView();
+var viewResolution = view.getResolution();
+var source = province.getSource();
+var url = source.getGetFeatureInfoUrl(
+evt.coordinate, viewResolution, view.getProjection(),
+{'INFO_FORMAT': 'application/json', 'FEATURE_COUNT': 50 });
+if (url) {
+$.ajax({
+type: "POST",
+url: url,
+contentType: "application/json; charset=utf-8",
+dataType: 'json',
+success: function (n) {
+// var content = "<table>";
+// for (var i = 0; i < n.features.length; i++) {
+// var feature = n.features[i];
+// var featureAttr = feature.properties;
+// content += "<tr><td>Phan khu QH: " + featureAttr["kyHieuPhan"]
+// + "</td><td>Ký Hiệu Ô Quy Hoạch: " + featureAttr["kyHieuOQH"]
+// + "</td><td>Diện Tích: " + featureAttr["SHAPE_Area"]
+// + "</td><td>Loại Đất: " + featureAttr["loaiDat"]
+// +"</td></tr>"
+// }
+// content += "</table>";
+
+var content = "<table>"
++ "<tr>"
++ "<td> Phan khu QH </td>"
++ "<td> Ký Hiệu Ô Quy Hoạch </td>"
++ "<td> Diện Tích </td>"
++ "<td> Loại Đất </td>"
++ "</tr>";
+for (var i = 0; i < n.features.length; i++) {
+var feature = n.features[i];
+var featureAttr = feature.properties;
+content += "<tr><td>" + featureAttr["kyHieuPhan"]
++ "</td><td>" + featureAttr["kyHieuOQH"]
++ "</td><td>" + featureAttr["SHAPE_Area"]
++ "</td><td>" + featureAttr["loaiDat"]
++"</td></tr>"
+}
+content += "</table>";
+$("#info").html(content);
+ 
+var vectorSource = new ol.source.Vector({
+features: (new ol.format.GeoJSON()).readFeatures(n)
+});
+
+vectorLayer.setSource(vectorSource);
+}
+});
+}
+});
+
+	map.getView().on('change:resolution', function(evt) {
+        var resolution = evt.target.get('resolution');
+        var units = map.getView().getProjection().getUnits();
+        var dpi = 25.4 / 0.28;
+        var mpu = ol.proj.METERS_PER_UNIT[units];
+        var scale = resolution * mpu * 39.37 * dpi;
+        if (scale >= 9500 && scale <= 950000) {
+          scale = Math.round(scale / 1000) + "K";
+        } else if (scale >= 950000) {
+          scale = Math.round(scale / 1000000) + "M";
+        } else {
+          scale = Math.round(scale);
+        }
+        document.getElementById('scale').innerHTML = "Scale = 1 : " + scale;
+      });
+      map.getView().fit(bounds, map.getSize());
+	  
+	  map.getView().setZoom(5);
+      
+}
+</script>
+</head>
+<body onload="init()">
+<div id="map"></div>
+<div class="left-panel">
+  <div style="text-align: center; color: #c828dd;">
+    <h1>Dat's Maps</h1>
+  </div>
+<br>
+<img src="http://localhost:8080/geoserver/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=CNSDD_latlong" />
+<!-- <img src="img_girl.jpg" alt="Hello world" width="300" height="450"> -->
+<!-- <div> 
+  <input type="checkbox" id="chkThuaDat" checked />
+  <label for="chkThuaDat">Quy Hoạch</label>
+  </div> -->
+<div>
+ <label class="toggle">
+    <input type="checkbox"  class = "toggle-checkbox"id="chkThuaDat" checked> 
+    <div class="toggle-switch"></div>
+    <span class="slider round">Quy Hoạch</span>
+</label> 
+</div>
+<div class="images">
+ 
+</div>
+<div id="info"></div>
+</div>
+<div style="text-align:right" id="scale"></div> 
+</body>
+
+</html>

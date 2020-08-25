@@ -32,26 +32,25 @@ var ThuaDat;
 $("#document").ready(function () {
 var format = 'image/png';
  
-var bounds = [105.41238454000006,20.66385334100005, 105.97243758500008, 21.306485866000042];
+//var bounds = [587771.5, 2325600.0, 588919.0625, 2326893.25];
+var bounds = [587771.5, 2280000.0, 588000.0625, 2360000.25];
 ThuaDat = new ol.layer.Image({
 source: new ol.source.ImageWMS({
 ratio: 1,
-url: 'http://vsmap-test.meeyland.com/geoserver/Meeymap/wms',
+url: 'http://localhost:8080/geoserver/testmap/wms',
 params: {
 'FORMAT': format,
 'VERSION': '1.1.1',
 STYLES: '',
-LAYERS: 'CNSDD_latlong_21_7',
+LAYERS: 'CNSDD_latlong',
 }
 })
 });
 var projection = new ol.proj.Projection({
-code: 'EPSG:4326',
+code: 'EPSG:32648',
 units: 'm',
 axisOrientation: 'neu'
 });
-//
-
 var view = new ol.View({
 projection: projection
 });
@@ -103,7 +102,50 @@ var url = source.getFeatureInfoUrl(
 evt.coordinate, viewResolution, view.getProjection(),
 {'INFO_FORMAT': 'application/json', 'FEATURE_COUNT': 50 });
 if (url) {
-document.getElementById('info').innerHTML = '<iframe seamless src="' + url + '"></iframe>';
+$.ajax({
+type: "POST",
+url: url,
+contentType: "application/json; charset=utf-8",
+dataType: 'json',
+success: function (n) {
+// var content = "<table>";
+// for (var i = 0; i < n.features.length; i++) {
+// var feature = n.features[i];
+// var featureAttr = feature.properties;
+// content += "<tr><td>Phan khu QH: " + featureAttr["kyhieuphan"]
+// + "</td><td>Ký Hiệu Ô Quy Hoạch: " + featureAttr["kyhieuoqh"]
+// + "</td><td>Diện Tích: " + featureAttr["shape_area"]
+// + "</td><td>Loại Đất: " + featureAttr["loaidat"]
+// +"</td></tr>"
+// }
+// content += "</table>";
+
+var content = "<table>"
++ "<tr>"
++ "<td> Phan khu QH </td>"
++ "<td> Ký Hiệu Ô Quy Hoạch </td>"
++ "<td> Diện Tích </td>"
++ "<td> Loại Đất </td>"
++ "</tr>";
+for (var i = 0; i < n.features.length; i++) {
+var feature = n.features[i];
+var featureAttr = feature.properties;
+content += "<tr><td>" + featureAttr["kyHieuPhan"]
++ "</td><td>" + featureAttr["kyHieuOQH"]
++ "</td><td>" + featureAttr["SHAPE_Area"]
++ "</td><td>" + featureAttr["loaiDat"]
++"</td></tr>"
+}
+content += "</table>";
+$("#info").html(content);
+ 
+var vectorSource = new ol.source.Vector({
+features: (new ol.format.GeoJSON()).readFeatures(n)
+});
+
+vectorLayer.setSource(vectorSource);
+}
+});
 }
 });
 });
@@ -114,8 +156,8 @@ document.getElementById('info').innerHTML = '<iframe seamless src="' + url + '">
 <div id="map" class="map"></div>
 <div class="righ-panel">
 <input type="checkbox" id="chkThuaDat" checked /><label for="chkThuaDat">Thửa đất</label>
-<img src="http://vsmap-test.meeyland.com/geoserver/Meeymap/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=CNSDD_latlong_21_7" />
-<div id="info" ></div>
+<img src="http://localhost:8080/geoserver/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&LAYER=CNSDD_latlong" />
+<div id="info"></div>
 </div>
 
 </body>
